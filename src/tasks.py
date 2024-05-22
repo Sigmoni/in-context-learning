@@ -60,6 +60,7 @@ def get_task_sampler(
         "quadratic_regression": QuadraticRegression,
         "relu_2nn_regression": Relu2nnRegression,
         "decision_tree": DecisionTree,
+        "dp_lis": Lis,
     }
     if task_name in task_names_to_classes:
         task_cls = task_names_to_classes[task_name]
@@ -334,6 +335,43 @@ class DecisionTree(Task):
     @staticmethod
     def generate_pool_dict(n_dims, num_tasks, hidden_layer_size=4, **kwargs):
         raise NotImplementedError
+
+    @staticmethod
+    def get_metric():
+        return squared_error
+
+    @staticmethod
+    def get_training_metric():
+        return mean_squared_error
+
+class Lis(Task):
+    def __init__(self, n_dims, batch_size, pool_dict=None, seeds=None):
+        super(Lis, self).__init__(n_dims, batch_size, pool_dict, seeds)
+
+    def evaluate(self, xs):
+        def lis(arr):
+            res = [1]
+            ans = 0
+            for i in range(1, len(arr)):
+                tmp = 0
+                for j in range(i):
+                    if arr[i] >= arr[j]:
+                        tmp = max(tmp, res[j])
+                res.append(tmp + 1)
+                ans = max(ans, tmp + 1)
+
+            return ans
+        
+        n_points = xs.size()[1]
+        ys = torch.zeros((self.b_size, n_points)).to(xs.device)
+        for i in range(self.b_size):
+            for j in range(n_points):
+                ys[i][j] = lis(xs[i][j])
+        return ys
+    
+    @staticmethod
+    def generate_pool_dict(n_dims, num_tasks, **kwargs):  # ignore extra args
+        return {}
 
     @staticmethod
     def get_metric():
