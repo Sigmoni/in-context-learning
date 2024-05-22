@@ -352,7 +352,7 @@ class Lis(Task):
         def lis(arr):
             res = [1]
             ans = 0
-            for i in range(1, len(arr)):
+            for i in range(1, self.n_dims):
                 tmp = 0
                 for j in range(i):
                     if arr[i] >= arr[j]:
