@@ -85,6 +85,7 @@ class IntSampler(DataSampler):
         for i in range(b_size):
             for j in range(n_points):
                 n = torch.randint(low=1, high=self.n_dims, size=()).item()
+                xs_b[i][j], _ = torch.sort(xs_b[i][j])
                 random_select_and_sort(xs_b[i][j], n)
 
         if n_dims_truncated is not None:
