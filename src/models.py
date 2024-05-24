@@ -71,6 +71,9 @@ def get_relevant_baselines(task_name):
             (XGBoostModel, {}),
             (AveragingModel, {}),
         ],
+        "dp_lis": [
+            (LisModel, {})
+        ],
     }
 
     models = [model_cls(**kwargs) for model_cls, kwargs in task_to_baselines[task_name]]
@@ -471,6 +474,45 @@ class XGBoostModel:
                     test_x = xs[j, i : i + 1]
                     y_pred = clf.predict(test_x)
                     pred[j] = y_pred[0].item()
+
+            preds.append(pred)
+
+        return torch.stack(preds, dim=1)
+
+class LisModel:
+    def __init__(self) -> None:
+        self.name = "lis"
+
+    def __call__(self, xs, ys, inds=None):
+        def lis(arr):
+            res = [1]
+            ans = 0
+            i = 1
+            while i < len(arr) and arr[i] != 0:
+                tmp = 0
+                for j in range(i):
+                    if arr[i] >= arr[j]:
+                        tmp = max(tmp, res[j])
+                res.append(tmp + 1)
+                ans = max(ans, tmp + 1)
+                i += 1
+            return ans
+        
+        xs, ys = xs.cpu(), ys.cpu()
+        if inds is None:
+            inds = range(ys.shape[1])
+        else:
+            if max(inds) >= ys.shape[1] or min(inds) < 0:
+                raise ValueError("inds contain indices where xs and ys are not defined")
+
+        preds = []
+
+        for i in inds:
+            pred = torch.zeros_like(ys[:, 0])
+            for j in range(ys.shape[0]):
+                test_x = xs[j, i : i + 1]
+                y_pred = lis(test_x)
+                pred[j] = y_pred
 
             preds.append(pred)
 
