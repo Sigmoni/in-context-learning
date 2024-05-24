@@ -32,4 +32,4 @@ training:
 out_dir: ../models/dp
 
 wandb:
-    name: "lis_toy"
+    name: "lis"
