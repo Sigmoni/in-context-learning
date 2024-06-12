@@ -28,3 +28,10 @@ for batch in x:
 
 plt.bar(range(21), cnt)
 plt.savefig("distribution.png")
+
+x = sampler.sample_xs(n_points=1, b_size=1)
+for batch in x:
+    for point in batch:
+        plt.figure()
+        plt.scatter(range(20), point)
+        plt.savefig("input.png")
