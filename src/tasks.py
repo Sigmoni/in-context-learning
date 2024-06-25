@@ -350,9 +350,12 @@ class Lis(Task):
 
     def evaluate(self, xs):
         def lis(arr):
+            if len(arr) == 0:
+                return 0
+            
             res = [1]
-            ans = 0
-            for i in range(1, self.n_dims):
+            ans = 1
+            for i in range(1, len(arr)):
                 tmp = 0
                 for j in range(i):
                     if arr[i] >= arr[j]:
@@ -366,7 +369,8 @@ class Lis(Task):
         ys = torch.zeros((self.b_size, n_points)).to(xs.device)
         for i in range(self.b_size):
             for j in range(n_points):
-                ys[i][j] = lis(xs[i][j])
+                arr = xs[i, :(j + 1), :].flatten()
+                ys[i][j] = lis(arr)
         return ys
     
     @staticmethod

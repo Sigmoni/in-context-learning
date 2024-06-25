@@ -486,7 +486,7 @@ class LisModel:
     def __call__(self, xs, ys, inds=None):
         def lis(arr):
             res = [1]
-            ans = 0
+            ans = 1
             i = 1
             while i < len(arr) and arr[i] != 0:
                 tmp = 0
@@ -510,7 +510,7 @@ class LisModel:
         for i in inds:
             pred = torch.zeros_like(ys[:, 0])
             for j in range(ys.shape[0]):
-                test_x = xs[j, i : i + 1]
+                test_x = xs[j, : i + 1]
                 y_pred = lis(test_x)
                 pred[j] = y_pred
 
