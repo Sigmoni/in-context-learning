@@ -7,7 +7,7 @@ from sklearn.linear_model import LogisticRegression, Lasso
 import warnings
 from sklearn import tree
 import xgboost as xgb
-
+import sys
 from base_models import NeuralNetwork, ParallelNetworks
 
 
@@ -124,11 +124,63 @@ class TransformerModel(nn.Module):
             if max(inds) >= ys.shape[1] or min(inds) < 0:
                 raise ValueError("inds contain indices where xs and ys are not defined")
         zs = self._combine(xs, ys)
+            # 重定向标准输出到文件
+        # with open('output.txt', 'w') as f:
+        #     original_stdout = sys.stdout  # 保存原始标准输出
+        #     sys.stdout = f
+        
+        #     # 临时设置打印选项以显示完整张量
+        #     with torch.no_grad():
+        #         torch.set_printoptions(profile="full")
+        #         print(zs.size())
+        #         print(zs)
+        #         torch.set_printoptions(profile="default")  # 恢复默认打印选项
+        
+        #     sys.stdout = original_stdout  # 恢复标准输出
+    
         embeds = self._read_in(zs)
         output = self._backbone(inputs_embeds=embeds).last_hidden_state
         prediction = self._read_out(output)
         return prediction[:, ::2, 0][:, inds]  # predict only on xs
 
+class LisModel:
+    def __init__(self) -> None:
+        self.name = "lis"
+
+    def __call__(self, xs, ys, inds=None):
+        def lis(arr):
+            res = [1]
+            ans = 1
+            i = 1
+            while i < len(arr) and arr[i] != 0:
+                tmp = 0
+                for j in range(i):
+                    if arr[i] >= arr[j]:
+                        tmp = max(tmp, res[j])
+                res.append(tmp + 1)
+                ans = max(ans, tmp + 1)
+                i += 1
+            return ans
+        
+        xs, ys = xs.cpu(), ys.cpu()
+        if inds is None:
+            inds = range(ys.shape[1])
+        else:
+            if max(inds) >= ys.shape[1] or min(inds) < 0:
+                raise ValueError("inds contain indices where xs and ys are not defined")
+
+        preds = []
+
+        for i in inds:
+            pred = torch.zeros_like(ys[:, 0])
+            for j in range(ys.shape[0]):
+                test_x = xs[j, : i + 1]
+                y_pred = lis(test_x)
+                pred[j] = y_pred
+
+            preds.append(pred)
+
+        return torch.stack(preds, dim=1)
 
 class NNModel:
     def __init__(self, n_neighbors, weights="uniform"):
@@ -479,41 +531,3 @@ class XGBoostModel:
 
         return torch.stack(preds, dim=1)
 
-class LisModel:
-    def __init__(self) -> None:
-        self.name = "lis"
-
-    def __call__(self, xs, ys, inds=None):
-        def lis(arr):
-            res = [1]
-            ans = 0
-            i = 1
-            while i < len(arr) and arr[i] != 0:
-                tmp = 0
-                for j in range(i):
-                    if arr[i] >= arr[j]:
-                        tmp = max(tmp, res[j])
-                res.append(tmp + 1)
-                ans = max(ans, tmp + 1)
-                i += 1
-            return ans
-        
-        xs, ys = xs.cpu(), ys.cpu()
-        if inds is None:
-            inds = range(ys.shape[1])
-        else:
-            if max(inds) >= ys.shape[1] or min(inds) < 0:
-                raise ValueError("inds contain indices where xs and ys are not defined")
-
-        preds = []
-
-        for i in inds:
-            pred = torch.zeros_like(ys[:, 0])
-            for j in range(ys.shape[0]):
-                test_x = xs[j, i : i + 1]
-                y_pred = lis(test_x)
-                pred[j] = y_pred
-
-            preds.append(pred)
-
-        return torch.stack(preds, dim=1)
