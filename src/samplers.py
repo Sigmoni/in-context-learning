@@ -59,7 +59,11 @@ class GaussianSampler(DataSampler):
         return xs_b
 
 class IntSampler(DataSampler):
+<<<<<<< HEAD
     def __init__(self, n_dims=1, low=0, high=10, resort=False):
+=======
+    def __init__(self, n_dims, low=0, high=10, resort=False):
+>>>>>>> 523ac14090ec8d131b2ff23f710921c5aa0d8182
         super().__init__(n_dims)
         self.low = low
         self.high = high
