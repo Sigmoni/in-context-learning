@@ -13,7 +13,7 @@ from samplers import get_data_sampler
 from curriculum import Curriculum
 from schema import schema
 from models import build_model
-
+import sys
 import wandb
 
 torch.backends.cudnn.benchmark = True
@@ -23,6 +23,20 @@ def train_step(model, xs, ys, optimizer, loss_func):
     optimizer.zero_grad()
     output = model(xs, ys)
     loss = loss_func(output, ys)
+    
+    # 重定向标准输出到文件
+    with open('output.txt', 'a') as f:
+        original_stdout = sys.stdout  # 保存原始标准输出
+        sys.stdout = f
+        
+        with torch.no_grad():
+            torch.set_printoptions(profile="full")
+            print(ys[0])
+            print(output[0])
+            print(loss)
+            torch.set_printoptions(profile="default")  # 恢复默认打印选项
+        
+        sys.stdout = original_stdout  # 恢复标准输出
     loss.backward()
     optimizer.step()
     return loss.detach().item(), output.detach()
@@ -154,6 +168,7 @@ def main(args):
         )
 
     model = build_model(args.model)
+    print(model)
     model.cuda()
     model.train()
 
