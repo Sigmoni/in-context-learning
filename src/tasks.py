@@ -349,6 +349,7 @@ class Lis(Task):
         super(Lis, self).__init__(n_dims, batch_size, pool_dict, seeds)
 
     def evaluate(self, xs):
+
         def lis(arr):
             if len(arr) == 0:
                 return 0
@@ -381,6 +382,6 @@ class Lis(Task):
     def get_metric():
         return squared_error
 
-    @staticmethod
+    @staticmethod          
     def get_training_metric():
         return mean_squared_error

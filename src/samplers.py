@@ -1,5 +1,5 @@
 import math
-
+import random
 import torch
 
 
@@ -59,11 +59,13 @@ class GaussianSampler(DataSampler):
         return xs_b
 
 class IntSampler(DataSampler):
-    def __init__(self, n_dims=1, low=0, high=10, resort=False):
+    def __init__(self, n_dims=1, low=0, high=10, resort=False, dynamic_range=False):
         super().__init__(n_dims)
         self.low = low
         self.high = high
         self.resort = resort
+        self.dynamic_range = dynamic_range
+        # assert self.dynamic_range is True
 
     def sample_xs(self, n_points, b_size, n_dims_truncated=None, seeds=None):
         def random_select_and_sort(arr, n):
@@ -86,17 +88,38 @@ class IntSampler(DataSampler):
                 random_select_and_sort(arr, n)
 
             return arr
+        
+        def random_numbers_dynamic(n, generator=None, resort=False):
+            arr = None
+            low = random.randint(self.low, self.high-1)
+            high = random.randint(low+1, self.high)
+            if generator is None:
+                arr = torch.randint(low=low, high=high, size=(n,))
+            else:
+                arr = torch.randint(low=low, high=high, size=(n,), generator=generator)
+            
+            if resort:
+                n = torch.randint(low=1, high=n, size=()).item()
+                arr, _ = torch.sort(arr, descending=True)
+                random_select_and_sort(arr, n)
+            return arr
 
         xs_b = torch.zeros(b_size, n_points, self.n_dims)
         if seeds is None:
             for i in range(b_size):
-                xs_b[i] = random_numbers(n_points * self.n_dims, resort=self.resort).reshape(n_points, self.n_dims)
+                if not self.dynamic_range:
+                    xs_b[i] = random_numbers(n_points * self.n_dims, resort=self.resort).reshape(n_points, self.n_dims)
+                else:
+                    xs_b[i] = random_numbers_dynamic(n_points * self.n_dims, resort=self.resort).reshape(n_points, self.n_dims)
         else:
             generator = torch.Generator()
             assert len(seeds) == b_size
             for i, seed in enumerate(seeds):
                 generator.manual_seed(seed)
-                xs_b[i] = random_numbers(n_points * self.n_dims, generator=generator, resort=self.resort).reshape(n_points, self.n_dims)
+                if not self.dynamic_range:
+                    xs_b[i] = random_numbers(n_points * self.n_dims, generator=generator, resort=self.resort).reshape(n_points, self.n_dims)
+                else:
+                    xs_b[i] = random_numbers_dynamic(n_points * self.n_dims, resort=self.resort).reshape(n_points, self.n_dims)
 
         if n_dims_truncated is not None:
             xs_b[:, :, n_dims_truncated:] = 0

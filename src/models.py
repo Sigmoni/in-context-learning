@@ -9,7 +9,7 @@ from sklearn import tree
 import xgboost as xgb
 import sys
 from base_models import NeuralNetwork, ParallelNetworks
-
+import torch.nn.functional as F
 
 def build_model(conf):
     if conf.family == "gpt2":
@@ -79,7 +79,15 @@ def get_relevant_baselines(task_name):
     models = [model_cls(**kwargs) for model_cls, kwargs in task_to_baselines[task_name]]
     return models
 
+class RoundSTEFunction(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, input):
+        return torch.round(input)
 
+    @staticmethod
+    def backward(ctx, grad_output):
+        return grad_output  # 近似梯度，直接传递
+    
 class TransformerModel(nn.Module):
     def __init__(self, n_dims, n_positions, n_embd=128, n_layer=12, n_head=4):
         super(TransformerModel, self).__init__()
@@ -116,7 +124,7 @@ class TransformerModel(nn.Module):
         zs = zs.view(bsize, 2 * points, dim)
         return zs
 
-    def forward(self, xs, ys, inds=None):
+    def forward(self, xs, ys, inds=None, debug=False):
         if inds is None:
             inds = torch.arange(ys.shape[1])
         else:
@@ -124,24 +132,28 @@ class TransformerModel(nn.Module):
             if max(inds) >= ys.shape[1] or min(inds) < 0:
                 raise ValueError("inds contain indices where xs and ys are not defined")
         zs = self._combine(xs, ys)
-            # 重定向标准输出到文件
-        # with open('output.txt', 'w') as f:
-        #     original_stdout = sys.stdout  # 保存原始标准输出
-        #     sys.stdout = f
-        
-        #     # 临时设置打印选项以显示完整张量
-        #     with torch.no_grad():
-        #         torch.set_printoptions(profile="full")
-        #         print(zs.size())
-        #         print(zs)
-        #         torch.set_printoptions(profile="default")  # 恢复默认打印选项
-        
-        #     sys.stdout = original_stdout  # 恢复标准输出
     
         embeds = self._read_in(zs)
         output = self._backbone(inputs_embeds=embeds).last_hidden_state
         prediction = self._read_out(output)
-        return prediction[:, ::2, 0][:, inds]  # predict only on xs
+        if debug:
+            # 重定向标准输出到文件
+            with open('output.txt', 'w') as f:
+                original_stdout = sys.stdout  # 保存原始标准输出
+                sys.stdout = f
+        
+                # 临时设置打印选项以显示完整张量
+                with torch.no_grad():
+                    # torch.set_printoptions(profile="full")
+                    # print(f"logits:\n{logits}")
+                    # print(f"logits shape:\n{logits.size()}")
+                    print(f"predictions:\n{prediction}")
+                    print(f"predictions shape:\n{prediction.size()}")
+                    torch.set_printoptions(profile="default")  # 恢复默认打印选项
+                sys.stdout = original_stdout  # 恢复标准输出
+        rounded_prediction = RoundSTEFunction.apply(prediction)
+        return rounded_prediction[:, ::2, 0][:, inds]  # predict only on xs
+        # return prediction[:, ::2, 0][:, inds]  # predict only on xs
 
 class LisModel:
     def __init__(self) -> None:

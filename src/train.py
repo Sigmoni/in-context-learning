@@ -25,18 +25,19 @@ def train_step(model, xs, ys, optimizer, loss_func):
     loss = loss_func(output, ys)
     
     # 重定向标准输出到文件
-    with open('output.txt', 'a') as f:
-        original_stdout = sys.stdout  # 保存原始标准输出
-        sys.stdout = f
+    # with open('output_ful.txt', 'a') as f:
+    #     original_stdout = sys.stdout  # 保存原始标准输出
+    #     sys.stdout = f
         
-        with torch.no_grad():
-            torch.set_printoptions(profile="full")
-            print(ys[0])
-            print(output[0])
-            print(loss)
-            torch.set_printoptions(profile="default")  # 恢复默认打印选项
+    #     with torch.no_grad():
+    #         torch.set_printoptions(profile="full")
+    #         print(xs[0])
+    #         print(ys[0])
+    #         print(output[0])
+    #         print(loss)
+    #         torch.set_printoptions(profile="default")  # 恢复默认打印选项
         
-        sys.stdout = original_stdout  # 恢复标准输出
+    #     sys.stdout = original_stdout  # 恢复标准输出
     loss.backward()
     optimizer.step()
     return loss.detach().item(), output.detach()
@@ -103,6 +104,13 @@ def train(model, args):
         loss_func = task.get_training_metric()
 
         loss, output = train_step(model, xs.cuda(), ys.cuda(), optimizer, loss_func)
+        with open('output_int.txt', 'w') as f:
+            original_stdout = sys.stdout  # 保存原始标准输出
+            sys.stdout = f
+            print(f"ys\n{ys}")
+            print(f"output\n{output}")
+            torch.set_printoptions(profile="default")  # 恢复默认打印选项
+            sys.stdout = original_stdout  # 恢复标准输出
 
         point_wise_tags = list(range(curriculum.n_points))
         point_wise_loss_func = task.get_metric()
@@ -168,7 +176,6 @@ def main(args):
         )
 
     model = build_model(args.model)
-    print(model)
     model.cuda()
     model.train()
 
